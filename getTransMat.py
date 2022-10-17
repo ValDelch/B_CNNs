@@ -30,10 +30,11 @@ def getTransMat(k, k_max='auto', TensorCorePad=True):
         k_mj.append(_k_mj)
         m += 1
 
+    Nyquist_m_max = len(k_mj) - 1
     if not TensorCorePad:
-        K = np.zeros((len(k_mj), max([len(x) for x in k_mj])), dtype=np.double)
+        K = np.zeros((Nyquist_m_max+1, max([len(x) for x in k_mj])), dtype=np.double)
     else:
-        ini_w = len(k_mj)
+        ini_w = Nyquist_m_max+1
         ini_h = max([len(x) for x in k_mj])
         while True:
             if ini_w % 8 == 0:
@@ -90,4 +91,4 @@ def getTransMat(k, k_max='auto', TensorCorePad=True):
                     transMat[_i, _j, m, j] = special.jv(m, K[m,j] * np.sqrt(grid[0][_i,_j]**2 + grid[1][_i,_j]**2))
                     transMat[_i, _j, m, j] *= np.exp(-1j * m * theta[_i,_j]) * A[m,j]**-1
 
-    return transMat, m_max, j_max, K
+    return transMat, m_max, j_max, Nyquist_m_max, K

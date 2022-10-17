@@ -33,6 +33,48 @@ class ConstantTensorInitializer(tf.keras.initializers.Initializer):
         return self.tensor
 
 
+class FourierBesselInitializer(tf.keras.initializers.Initializer):
+    """
+    A wrapper for the GlorotNormal initializer that takes k_max into account
+    by setting to zero the weights corresponding to k_mj > k_max
+    """
+    def __init__(self, K, m_max, imag=False):
+        self.K = K
+        self.m_max = m_max
+        self.imag = imag
+
+    def __call__(self, shape, dtype=None):
+        initializer = keras.initializers.GlorotNormal()
+        w = tf.Variable(initializer(shape, dtype=dtype))
+
+        # Remove parameters when k_mj > k_max
+        if not self.imag:
+            # For m = 0
+            for j in range(1, self.K.shape[1]):
+                if self.K[0,j] == 0.:
+                    w = w[0,j,:].assign(0.)
+            # For m > 0
+            for m in range(1, self.K.shape[0]):
+                if m > self.m_max:
+                    w = w[m,:,:].assign(0.)
+                    continue
+                for j in range(1, self.K.shape[1]):
+                    if self.K[m,j] == 0:
+                        w = w[m,j,:].assign(0.)
+        else:
+            # For m = 0
+            w = w[0,:,:].assign(0.)
+            # For m > 0
+            for m in range(1, self.K.shape[0]):
+                if m > self.m_max:
+                    w = w[m,:,:].assign(0.)
+                    continue
+                for j in range(1, self.K.shape[1]):
+                    if self.K[m,j] == 0:
+                        w = w[m,j,:].assign(0.)
+        return w
+
+
 class BesselConv2d(keras.layers.Layer):
     """
     Main class: define the BesseConv2d layer
@@ -112,7 +154,7 @@ class BesselConv2d(keras.layers.Layer):
         self.all_T_i = []
         for scale in self.scales:
 
-            transMat, self.m_max, self.j_max, K = getTransMat(self.k+scale, k_max, self.TensorCorePad)
+            transMat, self.m_max, self.j_max, Nyquist_m_max, K = getTransMat(self.k+scale, k_max, self.TensorCorePad)
 
             transMat_r = tf.math.real(transMat)
             transMat_r = tf.reshape(
@@ -150,33 +192,32 @@ class BesselConv2d(keras.layers.Layer):
         # Tensors has shape (p_max, C_in, C_out)
         self.w_r = self.add_weight(
             shape=(self.m_max+1, self.j_max+1, self.C_in * self.C_out),
-            initializer=keras.initializers.GlorotNormal,
+            initializer=FourierBesselInitializer(K=K, m_max=Nyquist_m_max, imag=False), #keras.initializers.GlorotNormal,
             trainable=True,
             name='weights_real_part'
         )
 
         self.w_i = self.add_weight(
             shape=(self.m_max+1, self.j_max+1, self.C_in * self.C_out),
-            initializer=keras.initializers.GlorotNormal,
+            initializer=FourierBesselInitializer(K=K, m_max=Nyquist_m_max, imag=True), #keras.initializers.GlorotNormal,
             trainable=True,
             name='weights_imag_part'
         )
 
         # Remove parameters when k_mj > k_max
         # For m = 0
-        keras.backend.set_value(self.w_i[0,:,:], tf.zeros(self.w_i[0,:,:].shape))
         n_zeros = (self.j_max+1)*(self.C_in*self.C_out)
         for j in range(1, self.j_max+1):
             if K[0,j] == 0.:
-                keras.backend.set_value(self.w_r[0,j,:], tf.zeros(self.w_r[0,j,:].shape))
                 n_zeros += self.C_in*self.C_out
         # For m > 0
         for m in range(1,self.m_max+1):
+            if m > Nyquist_m_max:
+                n_zeros += 2*self.C_in*self.C_out*(self.j_max+1)
+                continue
             for j in range(1, self.j_max+1):
                 if K[m,j] == 0:
-                    keras.backend.set_value(self.w_r[m,j,:], tf.zeros(self.w_r[m,j,:].shape))
-                    keras.backend.set_value(self.w_i[m,j,:], tf.zeros(self.w_i[m,j,:].shape))
-                    n_zeros += 2*(self.C_in*self.C_out)
+                    n_zeros += 2*self.C_in*self.C_out
 
         # Initialize the biases
         # There are as many biases as the number of filters of the layer (C_out)
