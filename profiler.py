@@ -14,10 +14,10 @@ keras.mixed_precision.set_global_policy('mixed_float16')
 #strategy = tf.distribute.OneDeviceStrategy(device="/gpu:0")
 
 # We will profile on the PCAM dataset
-# images_folder_train = 'C:/Users/vdelchev/Documents/datasets/PCAM/train'
-# train_path_labels = 'C:/Users/vdelchev/Documents/datasets/PCAM/train_labels.csv'
-images_folder_train = 'D:/datasets/PCAM/train'
-train_path_labels = 'D:/datasets/PCAM/train_labels.csv'
+images_folder_train = 'C:/Users/vdelchev/Documents/datasets/PCAM/train'
+train_path_labels = 'C:/Users/vdelchev/Documents/datasets/PCAM/train_labels.csv'
+#images_folder_train = 'D:/datasets/PCAM/train'
+#train_path_labels = 'D:/datasets/PCAM/train_labels.csv'
 
 # Train Images and labels
 train_map = pd.read_csv(train_path_labels)
