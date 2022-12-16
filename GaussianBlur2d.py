@@ -22,12 +22,12 @@ class GaussianBlur2d(keras.layers.Layer):
         super(GaussianBlur2d, self).__init__(name=name, **kwargs)
 
         self.sigma = sigma
-        self.k = 2*int(round(3*sigma))+1
+        k = 2*int(round(3*sigma))+1
         self.C_in = C_in
 
         self.w = tf.Variable(
-            initial_value=tf.cast(self._gaussian_kernel(self.k, self.sigma, C_in, dtype=tf.float32), tf.float16),
-            shape=(self.k, self.k, self.C_in, 1),
+            initial_value=tf.cast(self._gaussian_kernel(k, self.sigma, C_in, dtype=tf.float32), tf.float16),
+            shape=(k, k, self.C_in, 1),
             trainable=False,
             name='weights'
         )
@@ -50,7 +50,6 @@ class GaussianBlur2d(keras.layers.Layer):
     def get_config(self):
         config = super(GaussianBlur2d, self).get_config()
         config.update({"sigma": self.sigma,
-                       "k": self.k,
                        "C_in": self.C_in})
 
         return config

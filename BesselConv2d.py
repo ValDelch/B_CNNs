@@ -13,74 +13,20 @@ Last modification: 17-12-2021
 
 
 import numpy as np
-from scipy import special
 import tensorflow as tf
 from tensorflow import keras
 import einops
 from getTransMat import getTransMat
+from initializers import ConstantTensorInitializer, FourierBesselInitializer, CNNWarmupInitializer
 
-
-class ConstantTensorInitializer(tf.keras.initializers.Initializer):
-    """
-    Used to initialize weights with a constant tensor
-    """
-    def __init__(self, tensor):
-        self.tensor = tensor
-
-    def __call__(self, shape, dtype=None):
-        if self.tensor.shape != shape:
-            raise ValueError('Wrong shape for the constant tensor.')
-        return self.tensor
-
-
-class FourierBesselInitializer(tf.keras.initializers.Initializer):
-    """
-    A wrapper for the GlorotNormal initializer that takes k_max into account
-    by setting to zero the weights corresponding to k_mj > k_max
-    """
-    def __init__(self, K, m_max, imag=False):
-        self.K = K
-        self.m_max = m_max
-        self.imag = imag
-
-    def __call__(self, shape, dtype=None):
-        initializer = keras.initializers.GlorotNormal()
-        w = tf.Variable(initializer(shape, dtype=dtype))
-
-        # Remove parameters when k_mj > k_max
-        if not self.imag:
-            # For m = 0
-            for j in range(1, self.K.shape[1]):
-                if self.K[0,j] == 0.:
-                    w = w[0,j,:].assign(0.)
-            # For m > 0
-            for m in range(1, self.K.shape[0]):
-                if m > self.m_max:
-                    w = w[m,:,:].assign(0.)
-                    continue
-                for j in range(1, self.K.shape[1]):
-                    if self.K[m,j] == 0:
-                        w = w[m,j,:].assign(0.)
-        else:
-            # For m = 0
-            w = w[0,:,:].assign(0.)
-            # For m > 0
-            for m in range(1, self.K.shape[0]):
-                if m > self.m_max:
-                    w = w[m,:,:].assign(0.)
-                    continue
-                for j in range(1, self.K.shape[1]):
-                    if self.K[m,j] == 0:
-                        w = w[m,j,:].assign(0.)
-        return w
-
+from keras.backend import print_tensor
 
 class BesselConv2d(keras.layers.Layer):
     """
     Main class: define the BesseConv2d layer
     """
     def __init__(self, k, C_out, strides=1, padding='VALID', reflex_inv=False, scale_inv=False, 
-                 scales=[-2,0,2], activation='relu', TensorCorePad=True, name=None, **kwargs):
+                 scales=[-2,0,2], activation=None, TensorCorePad=True, CNNWarmup=None, name=None, **kwargs):
         """
         Initialization of the layer. Called only once, before any training.
 
@@ -97,6 +43,10 @@ class BesselConv2d(keras.layers.Layer):
         * When TensorCorePad is set to True, then padding is used to make mod(m_max+1,8)
           and mod(j_max+1,8) equal to 0. It makes possible for TF to use Tensor Cores.
           Note that this is only possible if mixed precision is also used.
+        * CNNWarmup is a string that represent the path to a pretrained CNN model that
+          will be used to initialize the weights of the layer. The model should be with
+          the same architecture as the one used for the BesselConv2d layer, and with the
+          same layer names.
         """
 
         super(BesselConv2d, self).__init__(name=name, **kwargs)
@@ -117,6 +67,8 @@ class BesselConv2d(keras.layers.Layer):
             ValueError("'activation' should be 'relu', 'sigmoid', 'tanh' or None")
         if TensorCorePad not in [True, False]:
             ValueError("'TensorCorePad' should be set to True or False")
+        if not isinstance(CNNWarmup, str) or CNNWarmup != None:
+            ValueError("'CNNWarmup' should be a string or None")
         
         self.k = k
         self.C_out = C_out
@@ -127,6 +79,7 @@ class BesselConv2d(keras.layers.Layer):
         self.scales = scales
         self.activation = activation
         self.TensorCorePad = TensorCorePad
+        self.CNNWarmup = CNNWarmup
         
         if self.scale_inv == False:
             self.scales = [0]
@@ -190,19 +143,44 @@ class BesselConv2d(keras.layers.Layer):
     
         # Initialize trainable weights
         # Tensors has shape (p_max, C_in, C_out)
-        self.w_r = self.add_weight(
-            shape=(self.m_max+1, self.j_max+1, self.C_in * self.C_out),
-            initializer=FourierBesselInitializer(K=K, m_max=Nyquist_m_max, imag=False), #keras.initializers.GlorotNormal,
-            trainable=True,
-            name='weights_real_part'
-        )
+        if self.CNNWarmup is None:
+            
+            self.w_r = self.add_weight(
+                shape=(self.m_max+1, self.j_max+1, self.C_in * self.C_out),
+                initializer=FourierBesselInitializer(K=K, m_max=Nyquist_m_max, imag=False), 
+                trainable=True,
+                name='weights_real_part'
+            )
 
-        self.w_i = self.add_weight(
-            shape=(self.m_max+1, self.j_max+1, self.C_in * self.C_out),
-            initializer=FourierBesselInitializer(K=K, m_max=Nyquist_m_max, imag=True), #keras.initializers.GlorotNormal,
-            trainable=True,
-            name='weights_imag_part'
-        )
+            self.w_i = self.add_weight(
+                shape=(self.m_max+1, self.j_max+1, self.C_in * self.C_out),
+                initializer=FourierBesselInitializer(K=K, m_max=Nyquist_m_max, imag=True), 
+                trainable=True,
+                name='weights_imag_part'
+            )
+
+        else:
+
+            transMat, self.m_max, self.j_max, Nyquist_m_max, K = getTransMat(self.k, k_max, self.TensorCorePad)
+            w_r, w_i = CNNWarmupInitializer(m_max=self.m_max, 
+                                            j_max=self.j_max, 
+                                            transMat=transMat, 
+                                            path=self.CNNWarmup, 
+                                            layer_name=self.name)
+
+            self.w_r = self.add_weight(
+                shape=(self.m_max+1, self.j_max+1, self.C_in * self.C_out),
+                initializer=ConstantTensorInitializer(w_r), 
+                trainable=True,
+                name='weights_real_part'
+            )
+
+            self.w_i = self.add_weight(
+                shape=(self.m_max+1, self.j_max+1, self.C_in * self.C_out),
+                initializer=ConstantTensorInitializer(w_i), 
+                trainable=True,
+                name='weights_imag_part'
+            )
 
         # Remove parameters when k_mj > k_max
         # For m = 0
@@ -223,9 +201,16 @@ class BesselConv2d(keras.layers.Layer):
         # There are as many biases as the number of filters of the layer (C_out)
         self.b = self.add_weight(
             shape=(self.C_out,),
-            initializer=tf.keras.initializers.RandomNormal,
+            initializer=tf.keras.initializers.GlorotNormal,
             trainable=True,
             name='biases'
+        )
+
+        self.multiplier = self.add_weight(
+            shape=(self.C_out,),
+            initializer=tf.keras.initializers.RandomUniform(minval=-1., maxval=1.),
+            trainable=True,
+            name='multiplier'
         )
 
         self.n_params = 2*(self.m_max+1)*(self.j_max+1)*self.C_in*self.C_out - n_zeros + self.C_out
@@ -250,8 +235,14 @@ class BesselConv2d(keras.layers.Layer):
 
             if not self.reflex_inv:
 
-                w_r = tf.linalg.matmul(self.all_T_r[i], self.w_r) - tf.linalg.matmul(self.all_T_i[i], self.w_i)
-                w_i = tf.linalg.matmul(self.all_T_r[i], self.w_i) + tf.linalg.matmul(self.all_T_i[i], self.w_r)
+                w_r = tf.math.add(
+                    tf.linalg.matmul(self.all_T_r[i], self.w_r),
+                    -tf.linalg.matmul(self.all_T_i[i], self.w_i)
+                )
+                w_i = tf.math.add(
+                    tf.linalg.matmul(self.all_T_r[i], self.w_i),
+                    tf.linalg.matmul(self.all_T_i[i], self.w_r)
+                )
 
                 self.w = einops.rearrange(
                     [w_r, w_i], 
@@ -280,28 +271,35 @@ class BesselConv2d(keras.layers.Layer):
 
                 all_a.append(
                     tf.math.add(
-                        einops.reduce(
-                            output, 'b w h (c m b1) -> b w h b1', 'sum', 
-                            w=output.shape[1], h=output.shape[2], c=2, m=self.m_max+1, b1=self.C_out
+                        tf.math.multiply(
+                            einops.reduce(
+                                output, 'b w h (c m b1) -> b w h b1', 'sum', 
+                                w=output.shape[1], h=output.shape[2], c=2, m=self.m_max+1, b1=self.C_out
+                            ),
+                            self.multiplier[tf.newaxis,tf.newaxis,tf.newaxis,:]
                         ),
                         self.b[tf.newaxis,tf.newaxis,tf.newaxis,:]
                     )[:,:,:,:,tf.newaxis]
                 )
 
+                #print_tensor(all_a[0], 'output')
+
             else:
 
-                _w_r = tf.linalg.matmul(self.all_T[i], tf.complex(self.w_r, tf.zeros(self.w_r.shape)))
-                _w_i = tf.linalg.matmul(self.all_T[i], tf.complex(tf.zeros(tf.concat([tf.zeros((1, self.j_max+1, self.C_in * self.C_out)), self.w_i], axis=0).shape), 
-                                                                  tf.concat([tf.zeros((1, self.j_max+1, self.C_in * self.C_out)), self.w_i], axis=0)))
+                _w_r = tf.linalg.matmul(self.all_T_r[i], self.w_r)
+                _w_i = tf.linalg.matmul(self.all_T_i[i], self.w_r)
 
                 w_r = einops.rearrange(
-                    [tf.math.real(_w_r), tf.math.real(_w_i)],
+                    [_w_r, _w_i],
                     'c1 m (k1 k2) (b1 b2) -> k1 k2 b1 (c1 m b2)',
                     c1=2, k1=self.k+scale, k2=self.k+scale, b1=self.C_in, m=self.m_max+1, b2=self.C_out
                 )
 
+                _w_r = tf.linalg.matmul(self.all_T_r[i], self.w_i)
+                _w_i = tf.linalg.matmul(self.all_T_i[i], self.w_i)
+
                 w_i = einops.rearrange(
-                    [tf.math.imag(_w_r), tf.math.imag(_w_i)],
+                    [_w_r, _w_i],
                     'c1 m (k1 k2) (b1 b2) -> k1 k2 b1 (c1 m b2)',
                     c1=2, k1=self.k+scale, k2=self.k+scale, b1=self.C_in, m=self.m_max+1, b2=self.C_out
                 )

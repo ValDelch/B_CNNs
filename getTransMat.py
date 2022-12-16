@@ -76,8 +76,6 @@ def getTransMat(k, k_max='auto', TensorCorePad=True):
     for m in range(2, m_max+1):
         A[m,0] = 1.
 
-    n_coeffs = np.count_nonzero(A)
-
     # Compute transMat
     transMat = np.zeros((k, k, m_max+1, j_max+1), dtype=np.complex64)
     for m in range(0, m_max+1):
