@@ -206,13 +206,6 @@ class BesselConv2d(keras.layers.Layer):
             name='biases'
         )
 
-        self.multiplier = self.add_weight(
-            shape=(self.C_out,),
-            initializer=tf.keras.initializers.RandomUniform(minval=-1., maxval=1.),
-            trainable=True,
-            name='multiplier'
-        )
-
         self.n_params = 2*(self.m_max+1)*(self.j_max+1)*self.C_in*self.C_out - n_zeros + self.C_out
         
     
@@ -271,12 +264,9 @@ class BesselConv2d(keras.layers.Layer):
 
                 all_a.append(
                     tf.math.add(
-                        tf.math.multiply(
-                            einops.reduce(
-                                output, 'b w h (c m b1) -> b w h b1', 'sum', 
-                                w=output.shape[1], h=output.shape[2], c=2, m=self.m_max+1, b1=self.C_out
-                            ),
-                            self.multiplier[tf.newaxis,tf.newaxis,tf.newaxis,:]
+                        einops.reduce(
+                            output, 'b w h (c m b1) -> b w h b1', 'sum', 
+                            w=output.shape[1], h=output.shape[2], c=2, m=self.m_max+1, b1=self.C_out
                         ),
                         self.b[tf.newaxis,tf.newaxis,tf.newaxis,:]
                     )[:,:,:,:,tf.newaxis]

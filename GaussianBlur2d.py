@@ -26,7 +26,7 @@ class GaussianBlur2d(keras.layers.Layer):
         self.C_in = C_in
 
         self.w = tf.Variable(
-            initial_value=tf.cast(self._gaussian_kernel(k, self.sigma, C_in, dtype=tf.float32), tf.float16),
+            initial_value=tf.cast(self._gaussian_kernel(k, self.sigma, C_in, dtype=tf.float32), tf.float32),
             shape=(k, k, self.C_in, 1),
             trainable=False,
             name='weights'
