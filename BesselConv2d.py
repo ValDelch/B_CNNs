@@ -16,10 +16,9 @@ import numpy as np
 import tensorflow as tf
 from tensorflow import keras
 import einops
-from getTransMat import getTransMat
-from initializers import ConstantTensorInitializer, FourierBesselInitializer, CNNWarmupInitializer
+from new_getTransMat import getTransMat
+from initializers import ConstantTensorInitializer, FourierBesselInitializer
 
-from keras.backend import print_tensor
 
 class BesselConv2d(keras.layers.Layer):
     """
@@ -107,7 +106,9 @@ class BesselConv2d(keras.layers.Layer):
         self.all_T_i = []
         for scale in self.scales:
 
-            transMat, self.m_max, self.j_max, Nyquist_m_max, K = getTransMat(self.k+scale, k_max, self.TensorCorePad)
+            transMat, MASK = getTransMat(self.k+scale, k_max, self.TensorCorePad)
+            self.m_max = MASK.shape[0] - 1
+            self.j_max = MASK.shape[1] - 1
 
             transMat_r = tf.math.real(transMat)
             transMat_r = tf.reshape(
@@ -118,12 +119,7 @@ class BesselConv2d(keras.layers.Layer):
                 shape=(self.m_max+1, (self.k+scale)**2, self.j_max+1)
             )
 
-            self.all_T_r.append(self.add_weight(
-                initializer=ConstantTensorInitializer(transMat_r),
-                shape=(self.m_max+1, (self.k+scale)**2, self.j_max+1),
-                trainable=False,
-                name='transMat_r_'+str(scale))
-            )
+            self.all_T_r.append(tf.Variable(initial_value=transMat_r, trainable=False, name='transMat_r_'+str(scale)))
 
             transMat_i = tf.math.imag(transMat)
             transMat_i = tf.reshape(
@@ -134,67 +130,38 @@ class BesselConv2d(keras.layers.Layer):
                 shape=(self.m_max+1, (self.k+scale)**2, self.j_max+1)
             )
 
-            self.all_T_i.append(self.add_weight(
-                initializer=ConstantTensorInitializer(transMat_i),
-                shape=(self.m_max+1, (self.k+scale)**2, self.j_max+1),
-                trainable=False,
-                name='transMat_i_'+str(scale))
-            )
+            self.all_T_i.append(tf.Variable(initial_value=transMat_i, trainable=False, name='transMat_i_'+str(scale)))
     
         # Initialize trainable weights
         # Tensors has shape (p_max, C_in, C_out)
-        if self.CNNWarmup is None:
-            
-            self.w_r = self.add_weight(
-                shape=(self.m_max+1, self.j_max+1, self.C_in * self.C_out),
-                initializer=FourierBesselInitializer(K=K, m_max=Nyquist_m_max, imag=False), 
-                trainable=True,
-                name='weights_real_part'
-            )
+        self.w_r = self.add_weight(
+            shape=(self.m_max+1, self.j_max+1, self.C_in * self.C_out),
+            initializer=FourierBesselInitializer(MASK=MASK, C_in=self.C_in, C_out=self.C_out, k=self.k, imag=False), 
+            trainable=True,
+            name='weights_real_part'
+        )
 
-            self.w_i = self.add_weight(
-                shape=(self.m_max+1, self.j_max+1, self.C_in * self.C_out),
-                initializer=FourierBesselInitializer(K=K, m_max=Nyquist_m_max, imag=True), 
-                trainable=True,
-                name='weights_imag_part'
-            )
-
-        else:
-
-            transMat, self.m_max, self.j_max, Nyquist_m_max, K = getTransMat(self.k, k_max, self.TensorCorePad)
-            w_r, w_i = CNNWarmupInitializer(m_max=self.m_max, 
-                                            j_max=self.j_max, 
-                                            transMat=transMat, 
-                                            path=self.CNNWarmup, 
-                                            layer_name=self.name)
-
-            self.w_r = self.add_weight(
-                shape=(self.m_max+1, self.j_max+1, self.C_in * self.C_out),
-                initializer=ConstantTensorInitializer(w_r), 
-                trainable=True,
-                name='weights_real_part'
-            )
-
-            self.w_i = self.add_weight(
-                shape=(self.m_max+1, self.j_max+1, self.C_in * self.C_out),
-                initializer=ConstantTensorInitializer(w_i), 
-                trainable=True,
-                name='weights_imag_part'
-            )
+        self.w_i = self.add_weight(
+            shape=(self.m_max+1, self.j_max+1, self.C_in * self.C_out),
+            initializer=FourierBesselInitializer(MASK=MASK, C_in=self.C_in, C_out=self.C_out, k=self.k, imag=True), 
+            trainable=True,
+            name='weights_imag_part'
+        )
 
         # Remove parameters when k_mj > k_max
-        # For m = 0
+        # For m = 0, no imaginary part
         n_zeros = (self.j_max+1)*(self.C_in*self.C_out)
+        # Checking 0's for the real part
         for j in range(1, self.j_max+1):
-            if K[0,j] == 0.:
+            if not MASK[0,j]:
                 n_zeros += self.C_in*self.C_out
         # For m > 0
-        for m in range(1,self.m_max+1):
-            if m > Nyquist_m_max:
+        for m in range(self.m_max+1):
+            if not MASK[m,0]:
                 n_zeros += 2*self.C_in*self.C_out*(self.j_max+1)
                 continue
             for j in range(1, self.j_max+1):
-                if K[m,j] == 0:
+                if not MASK[m,j]:
                     n_zeros += 2*self.C_in*self.C_out
 
         # Initialize the biases
@@ -271,8 +238,6 @@ class BesselConv2d(keras.layers.Layer):
                         self.b[tf.newaxis,tf.newaxis,tf.newaxis,:]
                     )[:,:,:,:,tf.newaxis]
                 )
-
-                #print_tensor(all_a[0], 'output')
 
             else:
 
