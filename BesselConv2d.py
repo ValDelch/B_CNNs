@@ -156,7 +156,7 @@ class BesselConv2d(keras.layers.Layer):
             if not MASK[0,j]:
                 n_zeros += self.C_in*self.C_out
         # For m > 0
-        for m in range(self.m_max+1):
+        for m in range(1, self.m_max+1):
             if not MASK[m,0]:
                 n_zeros += 2*self.C_in*self.C_out*(self.j_max+1)
                 continue
@@ -229,10 +229,30 @@ class BesselConv2d(keras.layers.Layer):
                         tf.nn.conv2d(inputs[:,:,:,:], self.w[:,:,:,:], padding=self.padding, strides=self.strides)
                     )
 
+                """
+                output = einops.reduce(
+                            output,
+                            'b w h (c m b1) -> b w h m b1', 'sum', 
+                            w=output.shape[1], h=output.shape[2], c=2, m=self.m_max+1, b1=self.C_out
+                        )
+
                 all_a.append(
                     tf.math.add(
                         einops.reduce(
-                            output, 'b w h (c m b1) -> b w h b1', 'sum', 
+                            tf.math.multiply(output, self.multiply[tf.newaxis,tf.newaxis,tf.newaxis,:,tf.newaxis]),
+                            'b w h m b1 -> b w h b1', 'sum', 
+                            w=output.shape[1], h=output.shape[2], m=self.m_max+1, b1=self.C_out
+                        ),
+                        self.b[tf.newaxis,tf.newaxis,tf.newaxis,:]
+                    )[:,:,:,:,tf.newaxis]
+                )
+                """
+
+                all_a.append(
+                    tf.math.add(
+                        einops.reduce(
+                            output,
+                            'b w h (c m b1) -> b w h b1', 'sum', 
                             w=output.shape[1], h=output.shape[2], c=2, m=self.m_max+1, b1=self.C_out
                         ),
                         self.b[tf.newaxis,tf.newaxis,tf.newaxis,:]
