@@ -6,4 +6,5 @@ A notebook can be found in the "Examples" directory. It shows simple examples on
 
 # Author
 Valentin Delchevalerie (University of Namur, Belgium)
+
 contact: valentin.delchevalerie@unamur.be
