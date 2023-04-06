@@ -2,12 +2,12 @@
 ----
 Description:
     Implementation of a 2-d Bessel Convolutional Layer using Tensorflow/Keras.
-    This layer can be made E(2)-invariant thanks to the use of the
+    This layer can be made S-O(2)-invariant thanks to the use of the
     Bessel functions of the first kind.
 ----
            Author: Valentin Delchevalerie
          Creation: 17-12-2021
-Last modification: 17-12-2021
+Last modification: 06-04-2023
 ----
 """
 
@@ -16,7 +16,7 @@ import numpy as np
 import tensorflow as tf
 from tensorflow import keras
 import einops
-from new_getTransMat import getTransMat
+from getTransMat import getTransMat
 from initializers import ConstantTensorInitializer, FourierBesselInitializer
 
 
@@ -25,7 +25,7 @@ class BesselConv2d(keras.layers.Layer):
     Main class: define the BesseConv2d layer
     """
     def __init__(self, k, C_out, strides=1, padding='VALID', reflex_inv=False, scale_inv=False, 
-                 scales=[-2,0,2], activation=None, TensorCorePad=True, CNNWarmup=None, name=None, **kwargs):
+                 scales=[-2,0,2], activation=None, TensorCorePad=True, name=None, **kwargs):
         """
         Initialization of the layer. Called only once, before any training.
 
@@ -42,10 +42,6 @@ class BesselConv2d(keras.layers.Layer):
         * When TensorCorePad is set to True, then padding is used to make mod(m_max+1,8)
           and mod(j_max+1,8) equal to 0. It makes possible for TF to use Tensor Cores.
           Note that this is only possible if mixed precision is also used.
-        * CNNWarmup is a string that represent the path to a pretrained CNN model that
-          will be used to initialize the weights of the layer. The model should be with
-          the same architecture as the one used for the BesselConv2d layer, and with the
-          same layer names.
         """
 
         super(BesselConv2d, self).__init__(name=name, **kwargs)
@@ -66,8 +62,6 @@ class BesselConv2d(keras.layers.Layer):
             ValueError("'activation' should be 'relu', 'sigmoid', 'tanh' or None")
         if TensorCorePad not in [True, False]:
             ValueError("'TensorCorePad' should be set to True or False")
-        if not isinstance(CNNWarmup, str) or CNNWarmup != None:
-            ValueError("'CNNWarmup' should be a string or None")
         
         self.k = k
         self.C_out = C_out
@@ -78,7 +72,6 @@ class BesselConv2d(keras.layers.Layer):
         self.scales = scales
         self.activation = activation
         self.TensorCorePad = TensorCorePad
-        self.CNNWarmup = CNNWarmup
         
         if self.scale_inv == False:
             self.scales = [0]
@@ -228,25 +221,6 @@ class BesselConv2d(keras.layers.Layer):
                     output = tf.math.square(
                         tf.nn.conv2d(inputs[:,:,:,:], self.w[:,:,:,:], padding=self.padding, strides=self.strides)
                     )
-
-                """
-                output = einops.reduce(
-                            output,
-                            'b w h (c m b1) -> b w h m b1', 'sum', 
-                            w=output.shape[1], h=output.shape[2], c=2, m=self.m_max+1, b1=self.C_out
-                        )
-
-                all_a.append(
-                    tf.math.add(
-                        einops.reduce(
-                            tf.math.multiply(output, self.multiply[tf.newaxis,tf.newaxis,tf.newaxis,:,tf.newaxis]),
-                            'b w h m b1 -> b w h b1', 'sum', 
-                            w=output.shape[1], h=output.shape[2], m=self.m_max+1, b1=self.C_out
-                        ),
-                        self.b[tf.newaxis,tf.newaxis,tf.newaxis,:]
-                    )[:,:,:,:,tf.newaxis]
-                )
-                """
 
                 all_a.append(
                     tf.math.add(

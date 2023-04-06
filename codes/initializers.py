@@ -31,7 +31,7 @@ class FourierBesselInitializer(tf.keras.initializers.Initializer):
     def __call__(self, shape, dtype=None):
         fan_in = self.C_in * (self.k**2)
         fan_out = self.C_out * (self.k**2)
-        initializer = tf.keras.initializers.RandomNormal(mean=0., stddev=np.sqrt(2. / (fan_in + fan_out)))
+        initializer = tf.keras.initializers.RandomNormal(mean=0., stddev=np.sqrt(2. / (fan_in)))
         w = tf.Variable(initializer(shape, dtype=dtype))
 
         # Remove parameters when k_mj > k_max
