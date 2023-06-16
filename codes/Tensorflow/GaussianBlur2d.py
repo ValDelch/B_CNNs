@@ -4,10 +4,6 @@ Description:
     Implementation of a 2-d Gaussian blur filter to avoid aliasing
     when using B-CNNs or similar models.
 ----
-           Author: Valentin Delchevalerie
-         Creation: 10-11-2021
-Last modification: 10-11-2021
-----
 """
 
 
