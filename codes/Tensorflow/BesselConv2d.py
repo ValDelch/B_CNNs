@@ -224,17 +224,6 @@ class BesselConv2d(keras.layers.Layer):
                         tf.nn.conv2d(inputs[:,:,:,:], self.w[:,:,:,:], padding=self.padding, strides=self.strides)
                     )
 
-                all_a.append(
-                    tf.math.add(
-                        einops.reduce(
-                            output,
-                            'b w h (c m b1) -> b w h b1', 'sum', 
-                            w=output.shape[1], h=output.shape[2], c=2, m=self.m_max+1, b1=self.C_out
-                        ),
-                        self.b[tf.newaxis,tf.newaxis,tf.newaxis,:]
-                    )[:,:,:,:,tf.newaxis]
-                )
-
             else:
 
                 _w_r = tf.linalg.matmul(self.all_T_r[i], self.w_r)
@@ -295,15 +284,15 @@ class BesselConv2d(keras.layers.Layer):
                         )
                     )
 
-                all_a.append(
-                    tf.math.add(
-                        einops.reduce(
-                            output, 'b w h (c m b1) -> b w h b1', 'sum', 
-                            w=output.shape[1], h=output.shape[2], c=2, m=self.m_max+1, b1=self.C_out
-                        ),
-                        self.b[tf.newaxis,tf.newaxis,tf.newaxis,:]
-                    )[:,:,:,:,tf.newaxis]
-                )
+            all_a.append(
+                tf.math.add(
+                    einops.reduce(
+                        output, 'b w h (c m b1) -> b w h b1', 'sum', 
+                        w=output.shape[1], h=output.shape[2], c=2, m=self.m_max+1, b1=self.C_out
+                    ),
+                    self.b[tf.newaxis,tf.newaxis,tf.newaxis,:]
+                )[:,:,:,:,tf.newaxis]
+            )
 
         a = tf.concat(all_a, axis=-1)
 
