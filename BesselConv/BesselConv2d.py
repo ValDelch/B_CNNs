@@ -16,7 +16,7 @@ import numpy as np
 import torch
 from torch import nn
 import einops
-from getTransMat import getTransMat
+from .getTransMat import getTransMat
 
 
 class BesselConv2d(nn.Module):
