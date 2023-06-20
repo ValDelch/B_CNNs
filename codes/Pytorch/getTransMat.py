@@ -9,7 +9,7 @@ def getTransMat(k, k_max='auto', TensorCorePad=True):
     
     # Computing k_max if needed using the Nyquist frequency
     if k_max == 'auto':
-        k_max = np.pi * (k/2.)
+        k_max = np.pi * (k / 2.)
         
     # Get all the k_mj such that K_mj < k_max
     k_mj = []
