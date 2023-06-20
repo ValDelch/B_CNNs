@@ -61,8 +61,6 @@ class BesselConv2d(nn.Module):
             ValueError("'C_out' should be an integer > 0")
         if not isinstance(strides, int) or strides < 1:
             ValueError("'strides' should be an integer > 0")
-        if padding not in ['VALID', 'SAME']:
-            ValueError("'padding' should be 'VALID' or 'SAME'")
         if reflex_inv not in [True, False]:
             ValueError("'reflex_inv' should be set to True or False")
         if scale_inv not in [True, False]:
@@ -211,19 +209,23 @@ class BesselConv2d(nn.Module):
                 # Computation of the activation.
                 # ----
 
-                if self.padding == 'VALID' and scale > 0:
+                if (self.padding == 'VALID' or self.padding == 0) and scale > 0:
                     pad = scale // 2
                     output = torch.square(
                         torch.nn.functional.conv2d(x[:,:,:,:], self.w[:,:,:,:], padding=(pad,pad), stride=self.strides)
                     )
-                elif self.padding == 'VALID' and scale < 0:
+                elif (self.padding == 'VALID' or self.padding == 0) and scale < 0:
                     pad = scale // 2
                     output = torch.square(
                         torch.nn.functional.conv2d(x[:,-pad:pad,-pad:pad,:], self.w[:,:,:,:], padding='valid', stride=self.strides)
                     )
                 else:
+                    if isinstance(self.padding, int):
+                        pad = self.padding
+                    else:
+                        pad = (self.k+scale-1) // 2
                     output = torch.square(
-                        torch.nn.functional.conv2d(x[:,:,:,:], self.w[:,:,:,:], padding='same', stride=self.strides)
+                        torch.nn.functional.conv2d(x[:,:,:,:], self.w[:,:,:,:], padding=(pad,pad), stride=self.strides)
                     )
 
             else:
@@ -256,7 +258,7 @@ class BesselConv2d(nn.Module):
                 # Computation of the activation.
                 # ----
 
-                if self.padding == 'VALID' and scale > 0:
+                if (self.padding == 'VALID' or self.padding == 0) and scale > 0:
                     pad = scale // 2
                     output = torch.add(
                         torch.square(
@@ -266,7 +268,7 @@ class BesselConv2d(nn.Module):
                             torch.nn.functional.conv2d(x[:,:,:,:], self.w[:,:,:,:,1], padding=(pad,pad), stride=self.strides)
                         )
                     )
-                elif self.padding == 'VALID' and scale < 0:
+                elif (self.padding == 'VALID' or self.padding == 0) and scale < 0:
                     pad = scale // 2
                     output = torch.add(
                         torch.square(
@@ -277,12 +279,16 @@ class BesselConv2d(nn.Module):
                         )
                     )
                 else:
+                    if isinstance(self.padding, int):
+                        pad = self.padding
+                    else:
+                        pad = (self.k+scale-1) // 2
                     output = torch.add(
                         torch.square(
-                            torch.nn.functional.conv2d(x[:,:,:,:], self.w[:,:,:,:,0], padding=self.padding.lower(), stride=self.strides)
+                            torch.nn.functional.conv2d(x[:,:,:,:], self.w[:,:,:,:,0], padding=(pad,pad), stride=self.strides)
                         ),
                         torch.square(
-                            torch.nn.functional.conv2d(x[:,:,:,:], self.w[:,:,:,:,1], padding=self.padding.lower(), stride=self.strides)
+                            torch.nn.functional.conv2d(x[:,:,:,:], self.w[:,:,:,:,1], padding=(pad,pad), stride=self.strides)
                         )
                     )
 
