@@ -89,7 +89,7 @@ class BesselConv2d(nn.Module):
         """
 
         # Get the transformation matrices
-        k_max = np.pi * (self.k / 2.)
+        k_max = np.pi * (self.k / 4.)
         self.all_T = []
         for scale in self.scales:
 
