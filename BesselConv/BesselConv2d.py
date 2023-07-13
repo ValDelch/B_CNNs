@@ -24,7 +24,7 @@ class BesselConv2d(nn.Module):
     Main class: define the BesseConv2d layer
     """
     def __init__(self, k, C_in, C_out, strides=1, padding='VALID', reflex_inv=False, scale_inv=False, 
-                 scales=[-2,0,2], activation=None, TensorCorePad=True, name=None, **kwargs):
+                 scales=[-2,0,2], activation=None, TensorCorePad=True, name=None, cutoff='strong', **kwargs):
         """
         Initialization of the layer. Called only once, before any training.
 
@@ -89,7 +89,13 @@ class BesselConv2d(nn.Module):
         """
 
         # Get the transformation matrices
-        k_max = np.pi * (self.k / 4.)
+        if cutoff == 'strong':
+            k_max = np.pi * (self.k / 4.)
+        elif cutoff == 'soft':
+            k_max = np.pi * (self.k / 2.)
+        else:
+            ValueError("'cutoff' should be set to 'strong' or 'soft'")
+
         self.all_T = []
         for scale in self.scales:
 
