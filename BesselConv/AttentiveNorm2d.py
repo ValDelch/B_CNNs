@@ -4,7 +4,7 @@ from torch import nn
 class AttentiveNorm2d(nn.BatchNorm2d):
 
 
-    def __init__(n_mixtures, num_features, eps=1e-5, momentum=0.1, affine=True,
+    def __init__(num_features, n_mixtures=5., eps=1e-5, momentum=0.1, affine=True,
                  track_running_stats=True, device=None, dtype=None):
         super(AttentiveNorm2d, self).__init__(num_features, eps, momentum, affine, track_running_stats, device, dtype)
 
