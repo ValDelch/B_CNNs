@@ -5,12 +5,11 @@ from torch import nn
 class AttentiveNorm2d(nn.BatchNorm2d):
 
 
-    def __init__(self, num_features, n_mixtures=5., eps=1e-5, momentum=0.1, 
+    def __init__(self, num_features, n_mixtures=5, eps=1e-5, momentum=0.1, 
                  affine=True, track_running_stats=True, device=None, dtype=None):
         super(AttentiveNorm2d, self).__init__(num_features, eps, momentum, affine, track_running_stats, device, dtype)
 
         self.n_mixtures = n_mixtures
-        print(num_features, self.n_mixtures)
         self.dense_layer = nn.Linear(num_features, self.n_mixtures)
 
         w = 0.1 * torch.normal(mean=torch.zeros(n_mixtures, num_features), std=torch.ones(n_mixtures, num_features)) + 1.
