@@ -4,8 +4,6 @@ This repository contains an implementation of Bessel-Convolutional Neural Networ
 
 Preprint can be found here: https://arxiv.org/abs/2304.09214
 
-A notebook can be found in the "Examples" directory. It shows simple examples on how to use the implementation.
-
 # Author
 Valentin Delchevalerie (University of Namur, Belgium)
 
