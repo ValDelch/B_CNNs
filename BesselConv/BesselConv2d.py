@@ -323,7 +323,7 @@ class BesselConv2d(nn.Module):
             idx = torch.argmax(torch.sum(a, dim=(1,2,3)), axis=-1)
             #a = torch.gather(a, index=idx[None,None,None,None,:], dim=-1)
             print(a.shape, idx.shape, idx.max(), idx.min())
-            a = torch.index_select(a, dim=-1, index=idx)
+            a = gather_nd_torch(a, idx, batch_dim=1)
             print(a.shape)
         else:
             a = a[:,:,:,:,0]
@@ -336,3 +336,28 @@ class BesselConv2d(nn.Module):
             return nn.Tanh(a)
         else:
             return a
+        
+
+def gather_nd_torch(params, indices, batch_dim=1):
+
+    batch_dims = params.size()[:batch_dim]  # [b1, ..., bn]
+    batch_size = np.cumprod(list(batch_dims))[-1]  # b1 * ... * bn
+    c_dim = params.size()[-1]  # c
+    grid_dims = params.size()[batch_dim:-1]  # [g1, ..., gm]
+    n_indices = indices.size(-2)  # x
+    n_pos = indices.size(-1)  # m
+
+    # reshape leadning batch dims to a single batch dim
+    params = params.reshape(batch_size, *grid_dims, c_dim)
+    indices = indices.reshape(batch_size, n_indices, n_pos)
+
+    # build gather indices
+    # gather for each of the data point in this "batch"
+    batch_enumeration = torch.arange(batch_size).unsqueeze(1)
+    gather_dims = [indices[:, :, i] for i in range(len(grid_dims))]
+    gather_dims.insert(0, batch_enumeration)
+    gathered = params[gather_dims]
+
+    # reshape back to the shape with leading batch dims
+    gathered = gathered.reshape(*batch_dims, n_indices, c_dim)
+    return gathered
