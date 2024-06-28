@@ -155,7 +155,8 @@ class BesselConv2d(nn.Module):
         )
 
         # Initialize the bias
-        nn.init.xavier_normal_(self.b)
+        bound = 1. / np.sqrt(fan_in)
+        nn.init.uniform_(self.b, -bound, bound)
 
         # Get the number of parameters
         # For m = 0, no imaginary part
