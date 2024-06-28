@@ -66,7 +66,7 @@ class GaussianBlur2d(nn.Module):
         _filter /= torch.sum(_filter)
 
         # The filter needs to be reshaped to be used in 2d depthwise convolution
-        self.filter = _filter.view(1, 1, filter_size, filter_size).repeat((C_in, 1, 1, 1))
+        self.filter = _filter.view(1, 1, filter_size, filter_size).repeat((C_in, 1, 1, 1)).to('cuda')
 
     def forward(self, x):
 
