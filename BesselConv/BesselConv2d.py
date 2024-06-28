@@ -155,8 +155,7 @@ class BesselConv2d(nn.Module):
         )
 
         # Initialize the bias
-        bound = 1. / np.sqrt(fan_in)
-        nn.init.uniform_(self.b, -bound, bound)
+        nn.init.xavier_normal_(self.b)
 
         # Get the number of parameters
         # For m = 0, no imaginary part
@@ -218,7 +217,7 @@ class BesselConv2d(nn.Module):
                 if (self.padding == 'VALID' or self.padding == 0) and scale > 0:
                     pad = scale // 2
                     output = torch.square(
-                        torch.nn.functional.conv2d(x[:,:,:,:], self.w[:,:,:,:], padding=(pad,pad), stride=self.strides)
+                        torch.nn.functional.conv2d(x[:,:,:,:], self.w[:,:,:,:], padding=pad, stride=self.strides)
                     )
                 elif (self.padding == 'VALID' or self.padding == 0) and scale < 0:
                     pad = scale // 2
@@ -226,12 +225,12 @@ class BesselConv2d(nn.Module):
                         torch.nn.functional.conv2d(x[:,-pad:pad,-pad:pad,:], self.w[:,:,:,:], padding='valid', stride=self.strides)
                     )
                 else:
-                    if isinstance(self.padding, int):
-                        pad = self.padding
-                    else:
+                    if self.padding == 'SAME':
                         pad = (self.k+scale-1) // 2
+                    else:
+                        pad = self.padding
                     output = torch.square(
-                        torch.nn.functional.conv2d(x[:,:,:,:], self.w[:,:,:,:], padding=(pad,pad), stride=self.strides)
+                        torch.nn.functional.conv2d(x[:,:,:,:], self.w[:,:,:,:], padding=pad, stride=self.strides)
                     )
 
             else:
@@ -268,10 +267,10 @@ class BesselConv2d(nn.Module):
                     pad = scale // 2
                     output = torch.add(
                         torch.square(
-                            torch.nn.functional.conv2d(x[:,:,:,:], self.w[:,:,:,:,0], padding=(pad,pad), stride=self.strides)
+                            torch.nn.functional.conv2d(x[:,:,:,:], self.w[:,:,:,:,0], padding=pad, stride=self.strides)
                         ),
                         torch.square(
-                            torch.nn.functional.conv2d(x[:,:,:,:], self.w[:,:,:,:,1], padding=(pad,pad), stride=self.strides)
+                            torch.nn.functional.conv2d(x[:,:,:,:], self.w[:,:,:,:,1], padding=pad, stride=self.strides)
                         )
                     )
                 elif (self.padding == 'VALID' or self.padding == 0) and scale < 0:
@@ -285,16 +284,17 @@ class BesselConv2d(nn.Module):
                         )
                     )
                 else:
-                    if isinstance(self.padding, int):
-                        pad = self.padding
-                    else:
+                    if self.padding == 'SAME':
                         pad = (self.k+scale-1) // 2
+                    else:
+                        pad = self.padding
+                        
                     output = torch.add(
                         torch.square(
-                            torch.nn.functional.conv2d(x[:,:,:,:], self.w[:,:,:,:,0], padding=(pad,pad), stride=self.strides)
+                            torch.nn.functional.conv2d(x[:,:,:,:], self.w[:,:,:,:,0], padding=pad, stride=self.strides)
                         ),
                         torch.square(
-                            torch.nn.functional.conv2d(x[:,:,:,:], self.w[:,:,:,:,1], padding=(pad,pad), stride=self.strides)
+                            torch.nn.functional.conv2d(x[:,:,:,:], self.w[:,:,:,:,1], padding=pad, stride=self.strides)
                         )
                     )
 
@@ -313,6 +313,7 @@ class BesselConv2d(nn.Module):
         if self.scale_inv:
             idx = torch.argmax(torch.sum(a, dim=(1,2,3), keepdim=False), axis=-1)
             a = torch.gather(a, index=idx, dim=-1)
+            # test with keepdim = True ?
         else:
             a = a[:,:,:,:,0]
 
