@@ -323,7 +323,7 @@ class BesselConv2d(nn.Module):
             idx = torch.argmax(torch.sum(a, dim=(1,2,3)), axis=-1)
             #a = torch.gather(a, index=idx[None,None,None,None,:], dim=-1)
             print(a.shape, idx.shape)
-            a = a[:,:,:,:,idx]
+            a = torch.index_select(a, dim=-1, index=idx)
             print(a.shape)
         else:
             a = a[:,:,:,:,0]
