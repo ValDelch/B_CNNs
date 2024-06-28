@@ -70,6 +70,6 @@ class GaussianBlur2d(nn.Module):
 
     def forward(self, x):
 
-        output = nn.functional.conv2d(x, self.filter, stride=self.stride, padding=self.padding, groups=input.shape[1])
+        output = nn.functional.conv2d(x, self.filter, stride=self.stride, padding=self.padding, groups=x.shape[1])
 
         return output
