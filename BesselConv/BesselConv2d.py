@@ -23,7 +23,7 @@ class BesselConv2d(nn.Module):
     """
     Main class: define the BesseConv2d layer
     """
-    def __init__(self, k, C_in, C_out, strides=1, padding='VALID', reflex_inv=False, scale_inv=False, 
+    def __init__(self, k, C_in, C_out, strides=1, padding='VALID', reflex_inv=False, scale_inv=False, bias=True, 
                  scales=[-2,0,2], activation=None, TensorCorePad=True, name=None, cutoff='strong', **kwargs):
         """
         Initialization of the layer. Called only once, before any training.
@@ -69,6 +69,8 @@ class BesselConv2d(nn.Module):
             ValueError("'activation' should be 'relu', 'sigmoid', 'tanh' or None")
         if TensorCorePad not in [True, False]:
             ValueError("'TensorCorePad' should be set to True or False")
+        if bias not in [True, False]:
+            ValueError("'bias' should be set to True or False")  
 
         self.k = k
         self.C_in = C_in
@@ -77,6 +79,7 @@ class BesselConv2d(nn.Module):
         self.padding = padding
         self.reflex_inv = reflex_inv
         self.scale_inv = scale_inv
+        self.bias = bias
         self.scales = scales
         self.activation = activation
         self.TensorCorePad = TensorCorePad
@@ -149,14 +152,19 @@ class BesselConv2d(nn.Module):
         )
 
         # Define the bias
-        self.b = nn.Parameter(
-            torch.Tensor(self.C_out).type(torch.float32).to(self.device),
-            requires_grad=True
-        )
-
-        # Initialize the bias
-        bound = 1. / np.sqrt(fan_in)
-        nn.init.uniform_(self.b, -bound, bound)
+        if self.bias:
+            self.b = nn.Parameter(
+                torch.Tensor(self.C_out).type(torch.float32).to(self.device),
+                requires_grad=True
+            )
+            bound = 1. / np.sqrt(fan_in)
+            nn.init.uniform_(self.b, -bound, bound)
+        else:
+            self.b = nn.Parameter(
+                torch.Tensor(self.C_out).type(torch.float32).to(self.device),
+                requires_grad=False
+            )
+            nn.init.zeros_(self.b)
 
         # Get the number of parameters
         # For m = 0, no imaginary part
