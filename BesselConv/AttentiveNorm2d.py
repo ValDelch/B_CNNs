@@ -12,8 +12,13 @@ class AttentiveNorm2d(nn.BatchNorm2d):
         self.n_mixtures = n_mixtures
         self.dense_layer = nn.Linear(num_features, self.n_mixtures)
 
-        w = 0.1 * torch.normal(mean=torch.zeros(n_mixtures, num_features), std=torch.ones(n_mixtures, num_features)) + 1.
-        b = 0.1 * torch.normal(mean=torch.zeros(n_mixtures, num_features), std=torch.ones(n_mixtures, num_features))
+        w = torch.zeros(n_mixtures, num_features)
+        nn.init.normal_(w, mean=0., std=1.)
+        b = torch.zeros(n_mixtures, num_features)
+        nn.init.normal_(b, mean=0., std=1.)
+
+        w = 0.1 * w + 1.
+        b = 0.1 * b
         self.learnable_weights = nn.Parameter(w, requires_grad=True)
         self.learnable_bias = nn.Parameter(b, requires_grad=True)
 
