@@ -22,7 +22,8 @@ class GaussianBlur2d(nn.Module):
     def __init__(self,
                  C_in: int,
                  sigma: float,
-                 stride: Union[int, Tuple[int, int]]):
+                 stride: Union[int, Tuple[int, int]],
+                 padding: Union[int, Tuple[int, int]] = None,):
         
         super(GaussianBlur2d, self).__init__()
         
