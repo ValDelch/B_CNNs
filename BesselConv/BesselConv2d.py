@@ -100,6 +100,7 @@ class BesselConv2d(nn.Module):
             ValueError("'cutoff' should be set to 'strong' or 'soft'")
 
         self.all_T = []
+        self.all_MASK = []
         for scale in self.scales:
 
             transMat, MASK = getTransMat(self.k+scale, k_max, self.TensorCorePad)
@@ -112,6 +113,7 @@ class BesselConv2d(nn.Module):
                 (self.m_max+1, (self.k+scale)**2, self.j_max+1)
             )
             self.all_T.append(torch.from_numpy(transMat).to(self.device))
+            self.all_MASK.append(torch.from_numpy(MASK).to(self.device))
 
         # Define the weights
         fan_in = self.C_in * (self.k**2)
@@ -199,12 +201,12 @@ class BesselConv2d(nn.Module):
             if not self.reflex_inv:
 
                 w_r = torch.add(
-                    torch.matmul(self.all_T[i].real, self.w_r),
-                    -torch.matmul(self.all_T[i].imag, self.w_i)
+                    torch.matmul(self.all_T[i].real, self.w_r * self.all_MASK[i][:,:,None]),
+                    -torch.matmul(self.all_T[i].imag, self.w_i * self.all_MASK[i][:,:,None])
                 )
                 w_i = torch.add(
-                    torch.matmul(self.all_T[i].real, self.w_i),
-                    torch.matmul(self.all_T[i].imag, self.w_r)
+                    torch.matmul(self.all_T[i].real, self.w_i * self.all_MASK[i][:,:,None]),
+                    torch.matmul(self.all_T[i].imag, self.w_r * self.all_MASK[i][:,:,None])
                 )
 
                 self.w = einops.rearrange(
@@ -238,8 +240,8 @@ class BesselConv2d(nn.Module):
 
             else:
 
-                _w_r = torch.matmul(self.all_T[i].real, self.w_r)
-                _w_i = torch.matmul(self.all_T[i].imag, self.w_r)
+                _w_r = torch.matmul(self.all_T[i].real, self.w_r * self.all_MASK[i][:,:,None])
+                _w_i = torch.matmul(self.all_T[i].imag, self.w_r * self.all_MASK[i][:,:,None])
 
                 w_r = einops.rearrange(
                     [_w_r, _w_i],
@@ -247,8 +249,8 @@ class BesselConv2d(nn.Module):
                     c1=2, k1=self.k+scale, k2=self.k+scale, b1=self.C_in, m=self.m_max+1, b2=self.C_out
                 )
 
-                _w_r = torch.matmul(self.all_T[i].real, self.w_i)
-                _w_i = torch.matmul(self.all_T[i].imag, self.w_i)
+                _w_r = torch.matmul(self.all_T[i].real, self.w_i * self.all_MASK[i][:,:,None])
+                _w_i = torch.matmul(self.all_T[i].imag, self.w_i * self.all_MASK[i][:,:,None])
 
                 w_i = einops.rearrange(
                     [_w_r, _w_i],
