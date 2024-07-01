@@ -100,7 +100,7 @@ class GaussianBlur2d(nn.Module):
         batch_size, channels, height, width = inputs.shape
         inputs = inputs.view(1, batch_size * channels, height, width)
         w = self.w.repeat(1, self.C_in, 1, 1)
-        a = F.conv2d(inputs, w, groups=batch_size * self.C_in, padding='same')
+        a = F.conv2d(inputs, w, groups=channels, padding='same')
         return a.view(batch_size, channels, height, width)
 
 # Example usage:
