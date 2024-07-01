@@ -25,6 +25,7 @@ class AttentiveNorm2d(nn.BatchNorm2d):
 
     def forward(self, x):
         attention = self.dense_layer(torch.mean(x, dim=(2, 3))) # N x K
+        attention = torch.nn.functional.sigmoid(attention)
         gamma_readjust = torch.matmul(attention, self.learnable_weights) # N x C
         beta_readjust = torch.matmul(attention, self.learnable_bias) # N x C
 
