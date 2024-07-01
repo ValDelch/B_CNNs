@@ -159,12 +159,6 @@ class BesselConv2d(nn.Module):
             )
             bound = 1. / np.sqrt(fan_in)
             nn.init.uniform_(self.b, -bound, bound)
-        else:
-            self.b = nn.Parameter(
-                torch.Tensor(self.C_out).type(torch.float32).to(self.device),
-                requires_grad=False
-            )
-            nn.init.zeros_(self.b)
 
         # Get the number of parameters
         # For m = 0, no imaginary part
@@ -307,15 +301,23 @@ class BesselConv2d(nn.Module):
                         )
                     )
 
-            all_a.append(
-                torch.add(
-                    einops.reduce(
-                        output, 'b (c m b1) w h -> b b1 w h', 'sum', 
-                        w=output.shape[2], h=output.shape[3], c=2, m=self.m_max+1, b1=self.C_out
-                    ),
-                    self.b[None,:,None,None]
-                )[:,:,:,:,None]
-            )
+            if self.bias:
+                all_a.append(
+                    torch.add(
+                        einops.reduce(
+                            output, 'b (c m b1) w h -> b b1 w h', 'sum', 
+                            w=output.shape[2], h=output.shape[3], c=2, m=self.m_max+1, b1=self.C_out
+                        ),
+                        self.b[None,:,None,None]
+                    )[:,:,:,:,None]
+                )
+            else:
+                all_a.append(
+                        einops.reduce(
+                            output, 'b (c m b1) w h -> b b1 w h', 'sum', 
+                            w=output.shape[2], h=output.shape[3], c=2, m=self.m_max+1, b1=self.C_out
+                        )[:,:,:,:,None]
+                )
 
         a = torch.cat(all_a, axis=-1)
 
