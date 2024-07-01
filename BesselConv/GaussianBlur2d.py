@@ -57,7 +57,7 @@ class GaussianBlur2d(nn.Module):
         variance = sigma ** 2.
 
         # setting the dtype is needed, otherwise it becomes an integer tensor
-        r = -torch.sum((grid - mean) ** 2., dim=-1, dtype=torch.float32())
+        r = -torch.sum((grid - mean) ** 2., dim=-1, dtype=torch.float32)
 
         # Build the gaussian kernel
         _filter = torch.exp(r / (2 * variance))
