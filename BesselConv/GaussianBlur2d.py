@@ -11,7 +11,7 @@ Description:
 Last modification: 28-06-2024
 ----
 """
-
+"""
 from typing import List, Tuple, Any, Union
 
 import torch
@@ -73,3 +73,36 @@ class GaussianBlur2d(nn.Module):
         output = nn.functional.conv2d(x, self.filter, stride=self.stride, padding=self.padding, groups=x.shape[1])
 
         return output
+"""
+import torch
+import torch.nn as nn
+import torch.nn.functional as F
+
+class GaussianBlur2d(nn.Module):
+    def __init__(self, sigma, C_in=1):
+        super(GaussianBlur2d, self).__init__()
+        
+        self.sigma = sigma
+        k = 2 * int(round(3 * sigma)) + 1
+        self.C_in = C_in
+
+        self.register_buffer('w', self._gaussian_kernel(k, self.sigma, C_in))
+        
+    def _gaussian_kernel(self, kernel_size, sigma, n_channels):
+        x = torch.arange(-kernel_size // 2 + 1, kernel_size // 2 + 1, dtype=torch.float32)
+        g = torch.exp(-(x**2) / (2 * sigma**2))
+        g_norm2d = torch.sum(g)**2
+        g_kernel = torch.ger(g, g) / g_norm2d
+        g_kernel = g_kernel.unsqueeze(-1).unsqueeze(-1)
+        return g_kernel.expand(-1, -1, n_channels, 1)
+    
+    def forward(self, inputs):
+        batch_size, channels, height, width = inputs.shape
+        inputs = inputs.view(1, batch_size * channels, height, width)
+        w = self.w.repeat(1, self.C_in, 1, 1)
+        a = F.conv2d(inputs, w, groups=batch_size * self.C_in, padding='same')
+        return a.view(batch_size, channels, height, width)
+
+# Example usage:
+# blur_layer = GaussianBlur2d(sigma=1.5, C_in=3)
+# output = blur_layer(input_tensor)
