@@ -92,17 +92,19 @@ class GaussianBlur2d(nn.Module):
         x = torch.arange(-kernel_size // 2 + 1, kernel_size // 2 + 1, dtype=torch.float32)
         g = torch.exp(-(x**2) / (2 * sigma**2))
         g_norm2d = torch.sum(g)**2
-        g_kernel = torch.ger(g, g) / g_norm2d
-        g_kernel = g_kernel.unsqueeze(-1).unsqueeze(-1)
-        return g_kernel.expand(-1, -1, n_channels, 1)
+        g_kernel = torch.outer(g, g) / g_norm2d
+        g_kernel = g_kernel.unsqueeze(0).unsqueeze(0)
+        return g_kernel.expand(n_channels, 1, -1, -1)
     
     def forward(self, inputs):
         batch_size, channels, height, width = inputs.shape
-        inputs = inputs.view(1, batch_size * channels, height, width)
-        w = self.w.repeat(1, self.C_in, 1, 1)
-        a = F.conv2d(inputs, w, groups=channels, padding='same')
-        return a.view(batch_size, channels, height, width)
+        if channels != self.C_in:
+            raise ValueError(f'Expected input with {self.C_in} channels, but got {channels} channels')
+        a = F.conv2d(inputs, self.w, groups=channels, padding='same')
+        return a
 
 # Example usage:
 # blur_layer = GaussianBlur2d(sigma=1.5, C_in=3)
+# input_tensor = torch.randn(1, 3, 224, 224)  # Example input
 # output = blur_layer(input_tensor)
+
