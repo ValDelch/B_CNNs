@@ -98,8 +98,6 @@ class GaussianBlur2d(nn.Module):
     
     def forward(self, inputs):
         batch_size, channels, height, width = inputs.shape
-        if channels != self.C_in:
-            raise ValueError(f'Expected input with {self.C_in} channels, but got {channels} channels')
         a = F.conv2d(inputs, self.w, groups=channels, padding='same')
         return a
 
