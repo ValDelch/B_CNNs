@@ -11,7 +11,7 @@ Description:
 Last modification: 28-06-2024
 ----
 """
-
+"""
 from typing import List, Tuple, Any, Union
 
 import torch
@@ -105,5 +105,3 @@ class GaussianBlur2d(nn.Module):
 # blur_layer = GaussianBlur2d(sigma=1.5, C_in=3)
 # input_tensor = torch.randn(1, 3, 224, 224)  # Example input
 # output = blur_layer(input_tensor)
-
-"""
