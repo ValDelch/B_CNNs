@@ -225,7 +225,7 @@ class BesselConv2d(nn.Module):
                 elif (self.padding == 'VALID' or self.padding == 0) and scale < 0:
                     pad = scale // 2
                     output = torch.square(
-                        torch.nn.functional.conv2d(x[:,-pad:pad,-pad:pad,:], self.w[:,:,:,:], padding='valid', stride=self.strides)
+                        torch.nn.functional.conv2d(x[:,:,-pad:pad,-pad:pad], self.w[:,:,:,:], padding='valid', stride=self.strides)
                     )
                 else:
                     output = torch.square(
