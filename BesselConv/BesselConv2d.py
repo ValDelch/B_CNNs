@@ -93,9 +93,9 @@ class BesselConv2d(nn.Module):
 
         # Get the transformation matrices
         if cutoff == 'strong':
-            k_max = np.pi * (self.k // 4.)
+            k_max = np.pi * (self.k / 4.)
         elif cutoff == 'soft':
-            k_max = np.pi * (self.k // 2.)
+            k_max = np.pi * (self.k / 2.)
         else:
             ValueError("'cutoff' should be set to 'strong' or 'soft'")
 
