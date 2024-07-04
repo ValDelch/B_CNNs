@@ -121,7 +121,7 @@ class BesselConv2d(nn.Module):
         # Define the weights
         fan_in = self.C_in * (self.k**2)
 
-        w_r_ini = np.random.normal(size=(self.m_max+1, self.j_max+1, self.C_in * self.C_out), loc=0., scale=np.sqrt(2./fan_in))
+        w_r_ini = np.random.normal(size=(self.m_max+1, self.j_max+1, self.C_in * self.C_out), loc=0., scale=np.sqrt(2./fan_in)*10)
         # Remove parameters when k_mj > k_max
         for m in range(MASK.shape[0]):
             for j in range(MASK.shape[1]):
@@ -136,7 +136,7 @@ class BesselConv2d(nn.Module):
             requires_grad=True
         )
 
-        w_i_ini = np.random.normal(size=(self.m_max+1, self.j_max+1, self.C_in * self.C_out), loc=0., scale=np.sqrt(2./fan_in))
+        w_i_ini = np.random.normal(size=(self.m_max+1, self.j_max+1, self.C_in * self.C_out), loc=0., scale=np.sqrt(2./fan_in)*10)
         # Remove parameters when k_mj > k_max
         # For m = 0, no imaginary part
         for _i in range(w_i_ini.shape[1]):
