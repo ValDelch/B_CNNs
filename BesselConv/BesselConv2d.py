@@ -283,10 +283,10 @@ class BesselConv2d(nn.Module):
                     pad = scale // 2
                     output = torch.add(
                         torch.square(
-                            torch.nn.functional.conv2d(x[:,-pad:pad,-pad:pad,:], self.w[:,:,:,:,0], padding='valid', stride=self.strides)
+                            torch.nn.functional.conv2d(x[:,:,-pad:pad,-pad:pad], self.w[:,:,:,:,0], padding='valid', stride=self.strides)
                         ),
                         torch.square(
-                            torch.nn.functional.conv2d(x[:,-pad:pad,-pad:pad,:], self.w[:,:,:,:,1], padding='valid', stride=self.strides)
+                            torch.nn.functional.conv2d(x[:,:,-pad:pad,-pad:pad], self.w[:,:,:,:,1], padding='valid', stride=self.strides)
                         )
                     )
                 else:
