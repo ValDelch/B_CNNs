@@ -114,7 +114,8 @@ class BesselConv2d(nn.Module):
             self.all_T.append(torch.from_numpy(transMat).to(self.device))
 
         # Define the weights
-        fan_in = self.C_in * (self.k**2)
+        #fan_in = self.C_in * (self.k**2)
+        fan_in = (self.m_max+1) * (self.j_max+1) * self.C_in
 
         w_r_ini = np.random.normal(size=(self.m_max+1, self.j_max+1, self.C_in * self.C_out), loc=0., scale=np.sqrt(2./fan_in))
         # Remove parameters when k_mj > k_max
