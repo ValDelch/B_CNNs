@@ -129,7 +129,7 @@ class BesselConv2d(nn.Module):
         w_r_ini = np.zeros(shape=(self.m_max+1, self.j_max+1, self.C_in * self.C_out))
         w_i_ini = np.zeros(shape=(self.m_max+1, self.j_max+1, self.C_in * self.C_out))
         print('=====')
-        for m in range(self.m_max+1)
+        for m in range(self.m_max+1):
             for j in range(self.j_max+1):
                 fan_in = self.C_in * (self.j_max+1) * (self.m_max+1) * np.linalg.norm(transMat[m,:,j])**2
                 print(fan_in)
