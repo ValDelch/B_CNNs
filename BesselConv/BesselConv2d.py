@@ -129,14 +129,13 @@ class BesselConv2d(nn.Module):
         w_r_ini = np.zeros(shape=(self.m_max+1, self.j_max+1, self.C_in * self.C_out))
         w_i_ini = np.zeros(shape=(self.m_max+1, self.j_max+1, self.C_in * self.C_out))
         print('=====')
-        for m in range(self.m_max+1):
-            for j in range(self.j_max+1):
-                fan_in = self.C_in * (self.m_max+1) * (self.j_max+1) * np.sum(np.dot(transMat[m,:,j], np.conj(transMat[m,:,j])))**2
-                if fan_in == 0:
-                    continue
-                print(fan_in)
-                w_r_ini[m,j,:] = np.random.normal(size=(self.C_in * self.C_out), loc=0., scale=np.sqrt(2./fan_in.real))
-                w_i_ini[m,j,:] = np.random.normal(size=(self.C_in * self.C_out), loc=0., scale=np.sqrt(2./fan_in.real))
+        for j in range(self.j_max+1):
+            fan_in = self.C_in * (self.j_max+1) * np.sum(np.dot(transMat[:,self.k**2//2,j], np.conj(transMat[:,self.k**2//2,j])))
+            if fan_in == 0:
+                continue
+            print(fan_in)
+            w_r_ini[:,j,:] = np.random.normal(size=(self.m_max+1, self.C_in * self.C_out), loc=0., scale=np.sqrt(2./fan_in.real))
+            w_i_ini[:,j,:] = np.random.normal(size=(self.m_max+1, self.C_in * self.C_out), loc=0., scale=np.sqrt(2./fan_in.real))
         print('=====')
 
         # Remove parameters when k_mj > k_max
