@@ -107,9 +107,6 @@ class BesselConv2d(nn.Module):
             self.m_max = MASK.shape[0] - 1
             self.j_max = MASK.shape[1] - 1
 
-            if scale == 0:
-                _MASK = MASK
-
             # Add the transformation matrix to the list
             transMat = np.reshape(
                 np.transpose(transMat, (2,0,1,3)),
@@ -118,10 +115,15 @@ class BesselConv2d(nn.Module):
             self.all_T.append(torch.from_numpy(transMat).to(self.device))
             self.all_MASK.append(torch.from_numpy(MASK).to(self.device))
 
+            if scale == 0:
+                _MASK = MASK
+                fan_in = self.C_in * self.j_max * np.linalg.norm(transMat, axis=0)**2
+
         MASK = _MASK
 
         # Define the weights
-        fan_in = self.C_in * (self.k**2)
+        #fan_in = self.C_in * (self.k**2)
+        print('old:', self.C_in * (self.k**2), 'new:', fan_in)
 
         w_r_ini = np.random.normal(size=(self.m_max+1, self.j_max+1, self.C_in * self.C_out), loc=0., scale=np.sqrt(2./fan_in))
         # Remove parameters when k_mj > k_max
