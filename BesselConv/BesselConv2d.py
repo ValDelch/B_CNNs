@@ -117,15 +117,25 @@ class BesselConv2d(nn.Module):
 
             if scale == 0:
                 _MASK = MASK
-                fan_in = self.C_in * self.j_max * np.linalg.norm(transMat, axis=0)**2
+                _transMat = transMat
+                #fan_in = self.C_in * self.j_max * np.linalg.norm(transMat, axis=0)**2
 
         MASK = _MASK
+        transMat = _transMat
 
         # Define the weights
         #fan_in = self.C_in * (self.k**2)
-        print('old:', self.C_in * (self.k**2), 'new:', fan_in)
 
-        w_r_ini = np.random.normal(size=(self.m_max+1, self.j_max+1, self.C_in * self.C_out), loc=0., scale=np.sqrt(2./fan_in))
+        w_r_ini = np.zeros(shape=(self.m_max+1, self.j_max+1, self.C_in * self.C_out))
+        w_i_ini = np.zeros(shape=(self.m_max+1, self.j_max+1, self.C_in * self.C_out))
+        print('=====')
+        for j in range(self.j_max+1):
+            fan_in = self.C_in * self.j_max * np.linalg.norm(transMat[:,:,j], axis=0)**2
+            print(fan_in)
+            w_r_ini[:,j,:] = np.random.normal(size=(self.m_max+1, self.C_in * self.C_out), loc=0., scale=np.sqrt(2./fan_in))
+            w_i_ini[:,j,:] = np.random.normal(size=(self.m_max+1, self.C_in * self.C_out), loc=0., scale=np.sqrt(2./fan_in))
+        print('=====')
+
         # Remove parameters when k_mj > k_max
         for m in range(MASK.shape[0]):
             for j in range(MASK.shape[1]):
@@ -140,7 +150,6 @@ class BesselConv2d(nn.Module):
             requires_grad=True
         )
 
-        w_i_ini = np.random.normal(size=(self.m_max+1, self.j_max+1, self.C_in * self.C_out), loc=0., scale=np.sqrt(2./fan_in))
         # Remove parameters when k_mj > k_max
         # For m = 0, no imaginary part
         for _i in range(w_i_ini.shape[1]):
@@ -166,7 +175,7 @@ class BesselConv2d(nn.Module):
                 torch.Tensor(self.C_out).type(torch.float32).to(self.device),
                 requires_grad=True
             )
-            bound = 1. / np.sqrt(fan_in)
+            bound = 1. / np.sqrt(C_in)
             nn.init.normal_(self.b, mean=0., std=bound)
 
         # Get the number of parameters
