@@ -164,8 +164,8 @@ class BesselConv2d(nn.Module):
                 torch.Tensor(self.C_out).type(torch.float32).to(self.device),
                 requires_grad=True
             )
-            bound = 1. / np.sqrt(self.C_in)
-            nn.init.normal_(self.b, mean=0., std=bound)
+            #bound = 1. / np.sqrt(self.C_in)
+            nn.init.zeros_(self.b)
 
         # Get the number of parameters
         # For m = 0, no imaginary part
