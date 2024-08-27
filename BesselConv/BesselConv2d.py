@@ -135,8 +135,8 @@ class BesselConv2d(nn.Module):
                 if fan_in == 0:
                     continue
                 print(fan_in)
-                w_r_ini[m,j,:] = np.random.normal(size=(self.C_in * self.C_out), loc=0., scale=np.sqrt(2./fan_in))
-                w_i_ini[m,j,:] = np.random.normal(size=(self.C_in * self.C_out), loc=0., scale=np.sqrt(2./fan_in))
+                w_r_ini[m,j,:] = np.random.normal(size=(self.C_in * self.C_out), loc=0., scale=np.sqrt(2./fan_in.real))
+                w_i_ini[m,j,:] = np.random.normal(size=(self.C_in * self.C_out), loc=0., scale=np.sqrt(2./fan_in.real))
         print('=====')
 
         # Remove parameters when k_mj > k_max
