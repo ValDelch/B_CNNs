@@ -130,7 +130,7 @@ class BesselConv2d(nn.Module):
         w_i_ini = np.zeros(shape=(self.m_max+1, self.j_max+1, self.C_in * self.C_out))
         print('=====')
         for j in range(self.j_max+1):
-            fan_in = self.C_in * (self.j_max+1) * np.sum(np.dot(transMat[:,self.k**2//2,j], np.conj(transMat[:,self.k**2//2,j])))**2
+            fan_in = self.C_in * (self.j_max+1) * np.sum(np.dot(transMat[:,self.k**2//2,j], np.conj(transMat[:,self.k**2//2,j])))
             if fan_in == 0:
                 continue
             print(fan_in)
