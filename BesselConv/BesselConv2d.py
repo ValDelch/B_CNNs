@@ -129,11 +129,12 @@ class BesselConv2d(nn.Module):
         w_r_ini = np.zeros(shape=(self.m_max+1, self.j_max+1, self.C_in * self.C_out))
         w_i_ini = np.zeros(shape=(self.m_max+1, self.j_max+1, self.C_in * self.C_out))
         print('=====')
-        for j in range(self.j_max+1):
-            fan_in = self.C_in * self.j_max * np.linalg.norm(transMat[:,:,j])**2
-            print(fan_in)
-            w_r_ini[:,j,:] = np.random.normal(size=(self.m_max+1, self.C_in * self.C_out), loc=0., scale=np.sqrt(2./fan_in))
-            w_i_ini[:,j,:] = np.random.normal(size=(self.m_max+1, self.C_in * self.C_out), loc=0., scale=np.sqrt(2./fan_in))
+        for m in range(self.m_max+1)
+            for j in range(self.j_max+1):
+                fan_in = self.C_in * (self.j_max+1) * (self.m_max+1) * np.linalg.norm(transMat[m,:,j])**2
+                print(fan_in)
+                w_r_ini[m,j,:] = np.random.normal(size=(self.m_max+1, self.C_in * self.C_out), loc=0., scale=np.sqrt(2./fan_in))
+                w_i_ini[m,j,:] = np.random.normal(size=(self.m_max+1, self.C_in * self.C_out), loc=0., scale=np.sqrt(2./fan_in))
         print('=====')
 
         # Remove parameters when k_mj > k_max
