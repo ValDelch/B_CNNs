@@ -107,6 +107,9 @@ class BesselConv2d(nn.Module):
             self.m_max = MASK.shape[0] - 1
             self.j_max = MASK.shape[1] - 1
 
+            if scale == 0:
+                _MASK = MASK
+
             # Add the transformation matrix to the list
             transMat = np.reshape(
                 np.transpose(transMat, (2,0,1,3)),
@@ -115,30 +118,12 @@ class BesselConv2d(nn.Module):
             self.all_T.append(torch.from_numpy(transMat).to(self.device))
             self.all_MASK.append(torch.from_numpy(MASK).to(self.device))
 
-            if scale == 0:
-                _MASK = MASK
-                _transMat = transMat
-                #fan_in = self.C_in * self.j_max * np.linalg.norm(transMat, axis=0)**2
-
         MASK = _MASK
-        transMat = _transMat
 
         # Define the weights
-        #fan_in = self.C_in * (self.k**2)
+        fan_in = self.C_in * (self.k**2) * self.j_max
 
-        w_r_ini = np.zeros(shape=(self.m_max+1, self.j_max+1, self.C_in * self.C_out))
-        w_i_ini = np.zeros(shape=(self.m_max+1, self.j_max+1, self.C_in * self.C_out))
-        print('=====')
-        for m in range(self.m_max+1):
-            for j in range(self.j_max+1):
-                fan_in = self.C_in * (self.m_max+1) * (self.j_max+1) * np.sum(np.dot(transMat[m,:,j], np.conj(transMat[m,:,j])))
-                if fan_in == 0:
-                    continue
-                print(fan_in)
-                w_r_ini[m,j,:] = np.random.normal(size=(self.C_in * self.C_out), loc=0., scale=np.sqrt(2./fan_in))
-                w_i_ini[m,j,:] = np.random.normal(size=(self.C_in * self.C_out), loc=0., scale=np.sqrt(2./fan_in))
-        print('=====')
-
+        w_r_ini = np.random.normal(size=(self.m_max+1, self.j_max+1, self.C_in * self.C_out), loc=0., scale=np.sqrt(2./fan_in))
         # Remove parameters when k_mj > k_max
         for m in range(MASK.shape[0]):
             for j in range(MASK.shape[1]):
@@ -153,6 +138,7 @@ class BesselConv2d(nn.Module):
             requires_grad=True
         )
 
+        w_i_ini = np.random.normal(size=(self.m_max+1, self.j_max+1, self.C_in * self.C_out), loc=0., scale=np.sqrt(2./fan_in))
         # Remove parameters when k_mj > k_max
         # For m = 0, no imaginary part
         for _i in range(w_i_ini.shape[1]):
@@ -178,7 +164,7 @@ class BesselConv2d(nn.Module):
                 torch.Tensor(self.C_out).type(torch.float32).to(self.device),
                 requires_grad=True
             )
-            bound = 1. / np.sqrt(C_in)
+            bound = 1. / np.sqrt(self.C_in)
             nn.init.normal_(self.b, mean=0., std=bound)
 
         # Get the number of parameters
