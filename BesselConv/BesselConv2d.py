@@ -131,7 +131,7 @@ class BesselConv2d(nn.Module):
         print('=====')
         for m in range(self.m_max+1):
             for j in range(self.j_max+1):
-                fan_in = self.C_in * (self.j_max+1) * np.mean(np.abs(transMat[m,:,j]))**2
+                fan_in = self.C_in * (self.j_max+1) * (self.m_max+1) * np.mean(np.abs(transMat[m,:,j]))**2
                 if fan_in == 0:
                     continue
                 print(fan_in)
